@@ -1,33 +1,31 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
 public class ComputeGraph : MonoBehaviour
 {
     public List<GameObject> GroundSegments;
     public GameObject Ground;
-    private Vector3[] GraphVertices;
+    public Graph LevelGraph;
     // Start is called before the first frame update
     void Start()
     {
         Vector3[] temp = GetGroundTopVertices(GroundSegments);
-        GraphVertices = InterpolateVertices(temp, 8);
+        LevelGraph = GenerateGraph(temp, 8);
+        Debug.Log("Graph Vertices" + LevelGraph.Vertices.Length);
+        foreach (var vertex in LevelGraph.Vertices) 
+        {
+            Debug.Log($"Vertex {vertex} neighbours count = " + vertex.Neighbours.Count);
+        }
     }
 
-    void OnDrawGizmos()
+ /*   void OnDrawGizmos()
     { 
-        foreach (var vertex in GraphVertices) 
+        foreach (var vertex in LevelGraph.Vertices) 
         {
             Gizmos.color = Color.red;
-            Gizmos.DrawSphere(vertex, 0.25f);
+            Gizmos.DrawSphere(vertex.Position, 0.25f);
         }     
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    }*/
 
     private Vector3[] GetGroundTopVertices(List<GameObject> GroundMeshSegments) 
     {
@@ -47,9 +45,9 @@ public class ComputeGraph : MonoBehaviour
         return groundMeshVertices.Where(x => x.y == (transform.localScale.y * 0.5f)).ToArray();
     }
 
-    private Vector3[] InterpolateVertices(Vector3[] vertices, int divisions)
+    private Graph GenerateGraph(Vector3[] vertices, int divisions)
     {
-        List<Vector3> interpolatedVertices = new List<Vector3>();
+        List<Vertex> interpolatedVertices = new List<Vertex>();
 
         for (int i = 0; i < vertices.Length - 4; i += 4) // each segment will always have 4 'surface' vertices
         {
@@ -77,23 +75,24 @@ public class ComputeGraph : MonoBehaviour
             {
                 for (int divZ = 0; divZ <= divisions; divZ++) 
                 {
-                    Vector3 v = new Vector3(minX + (xInterval * divX), transform.localScale.y * 0.5f, minZ + (zInterval * divZ));
+                    Vertex v = new Vertex(new(minX + (xInterval * divX), transform.localScale.y * 0.5f, minZ + (zInterval * divZ))); // interpolate new vertices
                     // Debug.Log($"Generated vertex pos= {v}");
                     if (!ContainsSimilarVertex(interpolatedVertices, v, 0.00001f))
                     {
                         interpolatedVertices.Add(v);
                     }
-                }            
+                }
             }
         }
-        return interpolatedVertices.ToArray();
+
+        return new Graph(interpolatedVertices.ToArray());
     }
 
-    private bool ContainsSimilarVertex(List<Vector3> vertices, Vector3 newVertex, float tolerance)
+    private bool ContainsSimilarVertex(List<Vertex> vertices, Vertex newVertex, float tolerance)
     {
         foreach (var vertex in vertices)
         {
-            if (Vector3.Distance(vertex, newVertex) < tolerance)
+            if (Vector3.Distance(vertex.Position, newVertex.Position) < tolerance)
             {
                 return true;  // Similar vertex found
             }
@@ -101,19 +100,38 @@ public class ComputeGraph : MonoBehaviour
         return false;
     }
 
-    private class Graph 
+    public class Graph 
     {
-        List<Vertex> Vertices { get; set; }
-        public Graph(List<Vertex> vertices) 
+        public Vertex[] Vertices { get; set; }
+        public Graph(Vertex[] vertices) 
         {
             Vertices = vertices;
+            CreateEdges();
+        }
+
+        private void CreateEdges() 
+        {
+            var vertexInterval = Vertices[0].Position.x - Vertices[1].Position.x;
+
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                for (int j = 0; j < Vertices.Length; j++)
+                {
+                    if (i == j) { continue; }
+
+                    if (Vertices[i].IsNeighbour(Vertices[j], vertexInterval))
+                    {
+                        Vertices[i].AddEdge(Vertices[j]);
+                    }
+                }
+            }
         }
     }
 
-    private class Vertex 
+    public class Vertex 
     {
-        Vector3 Position { get; set; }
-        List<Vertex> Neighbours { get; set; }
+        public Vector3 Position { get; set; }
+        public List<Vertex> Neighbours { get; set; }
         public Vertex(Vector3 position) 
         {
             Position = position;
@@ -123,12 +141,12 @@ public class ComputeGraph : MonoBehaviour
             Neighbours.Add(vertexB);
             //vertexB.Neighbours.Add(this);
         }
-        public bool IsNeighbour(Vertex vertexB)
+        public bool IsNeighbour(Vertex vertexB, float interval)
         {
             if (vertexB.Position.x == Position.x || vertexB.Position.z == Position.z) // check if the two vertices share a mutual postition on either x or z axis
             {
-                if (vertexB.Position.x == Position.x + 1 || vertexB.Position.x == Position.x - 1
-               || vertexB.Position.z == Position.z + 1 || vertexB.Position.z == Position.z - 1)
+                if (vertexB.Position.x == Position.x + interval || vertexB.Position.x == Position.x - interval
+               || vertexB.Position.z == Position.z + interval || vertexB.Position.z == Position.z - interval)
                 {
                     return true;
                 }

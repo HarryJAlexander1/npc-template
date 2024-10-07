@@ -118,5 +118,22 @@ public class ComputeGraph : MonoBehaviour
         {
             Position = position;
         }
+        public void AddEdge(Vertex vertexB)
+        {
+            Neighbours.Add(vertexB);
+            //vertexB.Neighbours.Add(this);
+        }
+        public bool IsNeighbour(Vertex vertexB)
+        {
+            if (vertexB.Position.x == Position.x || vertexB.Position.z == Position.z) // check if the two vertices share a mutual postition on either x or z axis
+            {
+                if (vertexB.Position.x == Position.x + 1 || vertexB.Position.x == Position.x - 1
+               || vertexB.Position.z == Position.z + 1 || vertexB.Position.z == Position.z - 1)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }

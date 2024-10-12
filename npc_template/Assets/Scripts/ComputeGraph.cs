@@ -143,14 +143,21 @@ public class ComputeGraph : MonoBehaviour
         }
         public bool IsNeighbour(Vertex vertexB, float interval)
         {
-            if (vertexB.Position.x == Position.x || vertexB.Position.z == Position.z) // check if the two vertices share a mutual postition on either x or z axis
+            var offsets = new[]
             {
-                if (vertexB.Position.x == Position.x + interval || vertexB.Position.x == Position.x - interval
-               || vertexB.Position.z == Position.z + interval || vertexB.Position.z == Position.z - interval)
-                {
-                    return true;
-                }
-            }
+                new Vector3(Position.x - interval, Position.y, Position.z - interval),
+                new Vector3(Position.x + interval, Position.y, Position.z + interval),
+                new Vector3(Position.x + interval, Position.y, Position.z - interval),
+                new Vector3(Position.x - interval, Position.y, Position.z + interval),
+                new Vector3(Position.x, Position.y, Position.z + interval),
+                new Vector3(Position.x, Position.y, Position.z - interval),
+                new Vector3(Position.x + interval, Position.y, Position.z),
+                new Vector3(Position.x - interval, Position.y, Position.z)
+            };
+
+            if (offsets.Contains(vertexB.Position))
+                return true;
+
             return false;
         }
     }

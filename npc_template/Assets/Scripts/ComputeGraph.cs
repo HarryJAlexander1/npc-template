@@ -6,26 +6,30 @@ public class ComputeGraph : MonoBehaviour
     public List<GameObject> GroundSegments;
     public GameObject Ground;
     public Graph LevelGraph;
+
     // Start is called before the first frame update
     void Start()
     {
         Vector3[] temp = GetGroundTopVertices(GroundSegments);
         LevelGraph = GenerateGraph(temp, 8);
         Debug.Log("Graph Vertices" + LevelGraph.Vertices.Length);
-        foreach (var vertex in LevelGraph.Vertices) 
+       /* foreach (var vertex in LevelGraph.Vertices) 
         {
             Debug.Log($"Vertex {vertex} neighbours count = " + vertex.Neighbours.Count);
-        }
+        }*/
     }
 
- /*   void OnDrawGizmos()
-    { 
-        foreach (var vertex in LevelGraph.Vertices) 
+    void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        for (int i = 1654; i < 1655; i++)
         {
-            Gizmos.color = Color.red;
-            Gizmos.DrawSphere(vertex.Position, 0.25f);
-        }     
-    }*/
+            for (int j = 0; j < LevelGraph.Vertices[i].Neighbours.Count; j++)
+            {
+                Gizmos.DrawSphere(LevelGraph.Vertices[i].Neighbours[j].Position, 0.25f);
+            }
+        }
+    }
 
     private Vector3[] GetGroundTopVertices(List<GameObject> GroundMeshSegments) 
     {
@@ -48,6 +52,7 @@ public class ComputeGraph : MonoBehaviour
     private Graph GenerateGraph(Vector3[] vertices, int divisions)
     {
         List<Vertex> interpolatedVertices = new List<Vertex>();
+        float vertexInterval = 0;
 
         for (int i = 0; i < vertices.Length - 4; i += 4) // each segment will always have 4 'surface' vertices
         {
@@ -71,6 +76,9 @@ public class ComputeGraph : MonoBehaviour
             float xInterval = (maxX - minX) / divisions;
             float zInterval = (maxZ - minZ) / divisions;
 
+            if (vertexInterval == 0)
+                vertexInterval = xInterval;
+
             for (int divX = 0; divX <= divisions; divX++) 
             {
                 for (int divZ = 0; divZ <= divisions; divZ++) 
@@ -85,7 +93,7 @@ public class ComputeGraph : MonoBehaviour
             }
         }
 
-        return new Graph(interpolatedVertices.ToArray());
+        return new Graph(interpolatedVertices.ToArray(), vertexInterval);
     }
 
     private bool ContainsSimilarVertex(List<Vertex> vertices, Vertex newVertex, float tolerance)
@@ -103,23 +111,23 @@ public class ComputeGraph : MonoBehaviour
     public class Graph 
     {
         public Vertex[] Vertices { get; set; }
-        public Graph(Vertex[] vertices) 
+        private float VertexInterval { get; set; }
+        public Graph(Vertex[] vertices, float vertexInterval) 
         {
+            VertexInterval = vertexInterval;
             Vertices = vertices;
             CreateEdges();
         }
 
         private void CreateEdges() 
-        {
-            var vertexInterval = Vertices[0].Position.x - Vertices[1].Position.x;
-
+        {     
             for (int i = 0; i < Vertices.Length; i++)
             {
                 for (int j = 0; j < Vertices.Length; j++)
                 {
                     if (i == j) { continue; }
 
-                    if (Vertices[i].IsNeighbour(Vertices[j], vertexInterval))
+                    if (Vertices[i].IsNeighbour(Vertices[j], VertexInterval))
                     {
                         Vertices[i].AddEdge(Vertices[j]);
                     }
@@ -134,6 +142,7 @@ public class ComputeGraph : MonoBehaviour
         public List<Vertex> Neighbours { get; set; }
         public Vertex(Vector3 position) 
         {
+            Neighbours = new List<Vertex>();
             Position = position;
         }
         public void AddEdge(Vertex vertexB)
@@ -155,10 +164,7 @@ public class ComputeGraph : MonoBehaviour
                 new Vector3(Position.x - interval, Position.y, Position.z)
             };
 
-            if (offsets.Contains(vertexB.Position))
-                return true;
-
-            return false;
+            return offsets.Contains(vertexB.Position);
         }
     }
 }
